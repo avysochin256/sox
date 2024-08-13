@@ -1,7 +1,6 @@
 # SOX - socket options extractor/setter.
-
-Sox allows to get or modify any tcp socket option for any process. Sometimes may be usefull for debugging.
-Also sox may be used as quick fix as it allows to change socket options of any app without restart and downtime.
+---
+##### Sox enables you to retrieve or modify any TCP socket option for any process. This can be particularly useful for debugging purposes. Additionally, Sox can serve as a quick fix by allowing you to change socket options for any application without requiring a restart or causing downtime.
 ---
 
 
@@ -59,4 +58,4 @@ SO_KEEPALIVE    1       Enable or disable TCP keepalive
 ❯ sudo ./sox get 1062 3 SO_KEEPALIVE
 SOCKET_OPTION   VALUE   DESCRIPTION                    
 SO_KEEPALIVE    0       Enable or disable TCP keepalive
-``
+```
