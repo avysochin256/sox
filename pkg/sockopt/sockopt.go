@@ -1,26 +1,12 @@
-/*
-Copyright © 2024 Alexander Vysochin <avyssochin@gmail.com>
-Licensed under the Apache License, Version 2.0
-*/
-
 package sockopt
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"text/tabwriter"
-
+	"github.com/gosuri/uitable"
 	"golang.org/x/sys/unix"
-)
-
-// Error types for socket operations
-var (
-	ErrInvalidPID      = fmt.Errorf("invalid process ID")
-	ErrInvalidFD       = fmt.Errorf("invalid file descriptor")
-	ErrInvalidOption   = fmt.Errorf("invalid socket option")
-	ErrInvalidValue    = fmt.Errorf("invalid option value")
-	ErrProcessAccess   = fmt.Errorf("cannot access process")
-	ErrSocketOperation = fmt.Errorf("socket operation failed")
+	"log/slog"
+	"os"
 )
 
 func GetSocketName(socketFd int) string {
@@ -31,130 +17,112 @@ func GetSocketName(socketFd int) string {
 	return socketName
 }
 
-// validateSocketOption checks if the option exists and the value is within allowed range
-func validateSocketOption(optionName string, value int) error {
-	opt, err := GetOptionByName(optionName)
+func ListSocketOptions(pid, fd int) {
+
+	socketFd, err := GetSocketFd(pid, fd)
 	if err != nil {
-		return fmt.Errorf("%w: %s", ErrInvalidOption, err)
+		slog.Error("unable to get sockopt fd", slog.Any("error", err))
 	}
 
-	if opt.MaxValue != 0 && value > opt.MaxValue {
-		return fmt.Errorf("%w: value %d exceeds maximum %d for option %s",
-			ErrInvalidValue, value, opt.MaxValue, optionName)
-	}
+	table := uitable.New()
 
-	if value < opt.MinValue {
-		return fmt.Errorf("%w: value %d is below minimum %d for option %s",
-			ErrInvalidValue, value, opt.MinValue, optionName)
-	}
+	table.MaxColWidth = 50
+	table.AddRow("OPTION NAME", "VALUE", "DESCRIPTION")
 
-	return nil
-}
+	var joinedListErr error
+	for _, soname := range OptionsList {
+		so := OptionsMap[soname]
 
-// validateProcess checks if the process exists and is accessible
-func validateProcess(pid int) error {
-	if pid <= 0 {
-		return fmt.Errorf("%w: PID must be positive", ErrInvalidPID)
-	}
+		val, err := so.Get(socketFd)
 
-	// Check if process exists
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return fmt.Errorf("%w: process %d not found", ErrInvalidPID, pid)
-	}
-
-	// Try to signal the process to check if we have access
-	err = proc.Signal(unix.Signal(0))
-	if err != nil {
-		return fmt.Errorf("%w: cannot access process %d", ErrProcessAccess, pid)
-	}
-
-	return nil
-}
-
-// validateFD checks if the file descriptor is valid
-func validateFD(fd int) error {
-	if fd < 0 {
-		return fmt.Errorf("%w: FD must be non-negative", ErrInvalidFD)
-	}
-	return nil
-}
-
-// GetSocketOption retrieves the value of a socket option
-func GetSocketOption(pid int, fd int, optionName string) error {
-	if err := validateProcess(pid); err != nil {
-		return err
-	}
-
-	if err := validateFD(fd); err != nil {
-		return err
-	}
-
-	opt, err := GetOptionByName(optionName)
-	if err != nil {
-		return fmt.Errorf("%w: %s", ErrInvalidOption, err)
-	}
-
-	value, err := unix.GetsockoptInt(fd, opt.Level, opt.Option)
-	if err != nil {
-		return fmt.Errorf("%w: failed to get option %s: %v", ErrSocketOperation, optionName, err)
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "SOCKET_OPTION\tVALUE\tDESCRIPTION")
-	fmt.Fprintf(w, "%s\t%d\t%s\n", opt.Name, value, opt.Description)
-	return w.Flush()
-}
-
-// SetSocketOption sets the value of a socket option
-func SetSocketOption(pid int, fd int, optionName string, value int) error {
-	if err := validateProcess(pid); err != nil {
-		return err
-	}
-
-	if err := validateFD(fd); err != nil {
-		return err
-	}
-
-	if err := validateSocketOption(optionName, value); err != nil {
-		return err
-	}
-
-	opt, _ := GetOptionByName(optionName) // Error already checked in validateSocketOption
-
-	err := unix.SetsockoptInt(fd, opt.Level, opt.Option, value)
-	if err != nil {
-		return fmt.Errorf("%w: failed to set option %s to %d: %v",
-			ErrSocketOperation, optionName, value, err)
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "SOCKET_OPTION\tVALUE\tDESCRIPTION")
-	fmt.Fprintf(w, "%s\t%d\t%s\n", opt.Name, value, opt.Description)
-	return w.Flush()
-}
-
-// ListSocketOptions lists all available socket options and their current values
-func ListSocketOptions(pid int, fd int) error {
-	if err := validateProcess(pid); err != nil {
-		return err
-	}
-
-	if err := validateFD(fd); err != nil {
-		return err
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "OPTION NAME\tVALUE\tDESCRIPTION")
-
-	for _, opt := range socketOptions {
-		value, err := unix.GetsockoptInt(fd, opt.Level, opt.Option)
 		if err != nil {
-			// Skip options that cannot be read
+			err = fmt.Errorf("unable to get sockopt option %s : %w", so.Name, err)
+			errors.Join(joinedListErr, err)
+
 			continue
 		}
-		fmt.Fprintf(w, "%s\t%d\t%s\n", opt.Name, value, opt.Description)
+
+		table.AddRow(so.Name, val, so.Description)
 	}
 
-	return w.Flush()
+	fmt.Println(table)
+
+	if uw, ok := joinedListErr.(interface{ Unwrap() []error }); ok {
+		errs := uw.Unwrap()
+		for _, err := range errs {
+			slog.Error("unable to get value of sockopt option", slog.Any("error", err))
+		}
+	}
+
+}
+
+func SetSocketOption(pid, fd int, option string, val int) {
+
+	socketFd, err := GetSocketFd(pid, fd)
+	if err != nil {
+		slog.Error("unable to get sockopt fd", slog.Any("error", err))
+	}
+
+	table := uitable.New()
+	table.MaxColWidth = 50
+
+	table.AddRow("SOCKET_OPTION", "VALUE", "DESCRIPTION")
+
+	so, ok := OptionsMap[option]
+	if !ok {
+		err = fmt.Errorf("unsupported socket option %s : %w", option, err)
+		os.Exit(1)
+
+	}
+
+	err = so.Set(socketFd, val)
+	if err != nil {
+		err = fmt.Errorf("unable to set sockopt option %s : %w", so.Name, err)
+		os.Exit(1)
+	}
+
+	val, err = so.Get(socketFd) // TODO: Remove shadowing
+
+	if err != nil {
+		err = fmt.Errorf("unable to get socket option %s  after value was set: %w", so.Name, err)
+
+	}
+
+	table.AddRow(so.Name, val, so.Description)
+
+	fmt.Println(table)
+
+}
+
+
+func GetSocketOption(pid, fd int, option string) {
+
+	socketFd, err := GetSocketFd(pid, fd)
+	if err != nil {
+		slog.Error("unable to get sockopt fd", slog.Any("error", err))
+	}
+
+	table := uitable.New()
+	table.MaxColWidth = 50
+
+	table.AddRow("SOCKET_OPTION", "VALUE", "DESCRIPTION")
+
+	so, ok := OptionsMap[option]
+	if !ok {
+		err = fmt.Errorf("unsupported socket option %s : %w", option, err)
+		os.Exit(1)
+
+	}
+
+	val, err := so.Get(socketFd)
+
+	if err != nil {
+		err = fmt.Errorf("unable to get socket option %s  after value was set: %w", so.Name, err)
+
+	}
+
+	table.AddRow(so.Name, val, so.Description)
+
+	fmt.Println(table)
+
 }
