@@ -14,14 +14,19 @@ type SocketOption struct {
 	Level       int
 	MinVal      int
 	MaxVal      int
+	Unsigned    bool
 	Description string
 }
 
 // Set changes the value of the socket option for the given socket file descriptor.
 func (so SocketOption) Set(socketFD int, value int) error {
+	if so.MaxVal != so.MinVal && (value < so.MinVal || value > so.MaxVal) {
+		return fmt.Errorf("value %d out of range [%d,%d] for %s", value, so.MinVal, so.MaxVal, so.Name)
+	}
+
 	err := unix.SetsockoptInt(socketFD, so.Level, so.Option, value)
 	if err != nil {
-		err = fmt.Errorf("unable to get value of sockopt option %s", so.Name)
+		err = fmt.Errorf("unable to set sockopt option %s: %w", so.Name, err)
 	}
 
 	return err
@@ -32,7 +37,7 @@ func (so SocketOption) Set(socketFD int, value int) error {
 func (so SocketOption) Get(socketFD int) (int, error) {
 	val, err := unix.GetsockoptInt(socketFD, so.Level, so.Option)
 	if err != nil {
-		err = fmt.Errorf("unable to get value of sockopt option %s", so.Name)
+		err = fmt.Errorf("unable to get value of sockopt option %s: %w", so.Name, err)
 	}
 
 	return val, err
@@ -141,7 +146,7 @@ var OptionsMap = map[string]SocketOption{
 		Name:        "TCP_LINGER2",
 		Option:      unix.TCP_LINGER2,
 		Level:       unix.IPPROTO_TCP,
-		MinVal:      0,
+		MinVal:      -1,
 		MaxVal:      32767,
 		Description: "Lifetime of orphaned FIN-WAIT-2 state",
 	},
@@ -157,7 +162,7 @@ var OptionsMap = map[string]SocketOption{
 		Name:        "TCP_WINDOW_CLAMP",
 		Option:      unix.TCP_WINDOW_CLAMP,
 		Level:       unix.IPPROTO_TCP,
-		MinVal:      1,
+		MinVal:      0,
 		MaxVal:      1073725440,
 		Description: "Set maximum window size",
 	},
@@ -230,7 +235,8 @@ var OptionsMap = map[string]SocketOption{
 		Option:      unix.TCP_TIMESTAMP,
 		Level:       unix.IPPROTO_TCP,
 		MinVal:      0,
-		MaxVal:      1,
-		Description: "Enable TCP timestamps",
+		MaxVal:      0,
+		Unsigned:    true,
+		Description: "Initial TCP timestamp value",
 	},
 }

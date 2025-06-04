@@ -46,7 +46,11 @@ func ListSocketOptions(pid, fd int) {
 			continue
 		}
 
-		table.AddRow(so.Name, val, so.Description)
+		display := any(val)
+		if so.Unsigned {
+			display = fmt.Sprintf("%d", uint32(val))
+		}
+		table.AddRow(so.Name, display, so.Description)
 	}
 
 	fmt.Println(table)
@@ -93,7 +97,11 @@ func SetSocketOption(pid, fd int, option string, val int) {
 
 	}
 
-	table.AddRow(so.Name, val, so.Description)
+	display := any(val)
+	if so.Unsigned {
+		display = fmt.Sprintf("%d", uint32(val))
+	}
+	table.AddRow(so.Name, display, so.Description)
 
 	fmt.Println(table)
 
@@ -127,7 +135,11 @@ func GetSocketOption(pid, fd int, option string) {
 
 	}
 
-	table.AddRow(so.Name, val, so.Description)
+	display := any(val)
+	if so.Unsigned {
+		display = fmt.Sprintf("%d", uint32(val))
+	}
+	table.AddRow(so.Name, display, so.Description)
 
 	fmt.Println(table)
 
