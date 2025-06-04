@@ -10,6 +10,8 @@ import (
 )
 
 // rootCmd represents the base command when called without any subcommands
+var outputFormat string
+
 var rootCmd = &cobra.Command{
 	Use:   "sox <command> <process pid> <socket fd> [<option name>] [<option val>]",
 	Short: "SOX allows to get/update socket option value for any socket",
@@ -24,4 +26,5 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table, json, yaml")
 }

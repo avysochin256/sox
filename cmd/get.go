@@ -27,7 +27,7 @@ var getCmd = &cobra.Command{
 
 		option := args[2]
 
-		sockopt.GetSocketOption(pid, fd, option)
+		sockopt.GetSocketOption(pid, fd, option, outputFormat)
 	},
 }
 

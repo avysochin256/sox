@@ -33,7 +33,7 @@ var setCmd = &cobra.Command{
 			slog.Error("strconv.Atoi err", slog.Any("err", err))
 		}
 
-		sockopt.SetSocketOption(pid, fd, option, val)
+		sockopt.SetSocketOption(pid, fd, option, val, outputFormat)
 	},
 }
 

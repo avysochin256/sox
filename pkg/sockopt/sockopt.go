@@ -3,13 +3,56 @@
 package sockopt
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gosuri/uitable"
 	"golang.org/x/sys/unix"
 	"log/slog"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
+
+// OptionRow represents a single socket option value used for output.
+type OptionRow struct {
+	Name        string `json:"name" yaml:"name"`
+	Value       any    `json:"value" yaml:"value"`
+	Description string `json:"description" yaml:"description"`
+}
+
+// printOutput prints data in the requested format.
+func printOutput(data any, headers []string, format string) {
+	switch format {
+	case "json":
+		b, err := json.MarshalIndent(data, "", "  ")
+		if err == nil {
+			fmt.Println(string(b))
+		}
+	case "yaml":
+		b, err := yaml.Marshal(data)
+		if err == nil {
+			fmt.Print(string(b))
+		}
+	default:
+		table := uitable.New()
+		table.MaxColWidth = 50
+		hi := make([]interface{}, len(headers))
+		for i, h := range headers {
+			hi[i] = h
+		}
+		table.AddRow(hi...)
+		switch v := data.(type) {
+		case OptionRow:
+			table.AddRow(v.Name, v.Value, v.Description)
+		case []OptionRow:
+			for _, r := range v {
+				table.AddRow(r.Name, r.Value, r.Description)
+			}
+		}
+		fmt.Println(table)
+	}
+}
 
 // GetSocketName returns the IPv4 address and port of a socket file descriptor.
 func GetSocketName(socketFd int) string {
@@ -21,17 +64,14 @@ func GetSocketName(socketFd int) string {
 }
 
 // ListSocketOptions prints all supported options for the given pid/fd pair.
-func ListSocketOptions(pid, fd int) {
+func ListSocketOptions(pid, fd int, format string) {
 
 	socketFd, err := GetSocketFd(pid, fd)
 	if err != nil {
 		slog.Error("unable to get sockopt fd", slog.Any("error", err))
 	}
 
-	table := uitable.New()
-
-	table.MaxColWidth = 50
-	table.AddRow("OPTION NAME", "VALUE", "DESCRIPTION")
+	var rows []OptionRow
 
 	var joinedListErr error
 	for _, soname := range OptionsList {
@@ -50,10 +90,10 @@ func ListSocketOptions(pid, fd int) {
 		if so.Unsigned {
 			display = fmt.Sprintf("%d", uint32(val))
 		}
-		table.AddRow(so.Name, display, so.Description)
+		rows = append(rows, OptionRow{so.Name, display, so.Description})
 	}
 
-	fmt.Println(table)
+	printOutput(rows, []string{"OPTION NAME", "VALUE", "DESCRIPTION"}, format)
 
 	if uw, ok := joinedListErr.(interface{ Unwrap() []error }); ok {
 		errs := uw.Unwrap()
@@ -65,17 +105,14 @@ func ListSocketOptions(pid, fd int) {
 }
 
 // SetSocketOption changes the option value for the socket defined by pid/fd.
-func SetSocketOption(pid, fd int, option string, val int) {
+func SetSocketOption(pid, fd int, option string, val int, format string) {
 
 	socketFd, err := GetSocketFd(pid, fd)
 	if err != nil {
 		slog.Error("unable to get sockopt fd", slog.Any("error", err))
 	}
 
-	table := uitable.New()
-	table.MaxColWidth = 50
-
-	table.AddRow("SOCKET_OPTION", "VALUE", "DESCRIPTION")
+	var row OptionRow
 
 	so, ok := OptionsMap[option]
 	if !ok {
@@ -101,25 +138,22 @@ func SetSocketOption(pid, fd int, option string, val int) {
 	if so.Unsigned {
 		display = fmt.Sprintf("%d", uint32(val))
 	}
-	table.AddRow(so.Name, display, so.Description)
+	row = OptionRow{so.Name, display, so.Description}
 
-	fmt.Println(table)
+	printOutput(row, []string{"SOCKET_OPTION", "VALUE", "DESCRIPTION"}, format)
 
 }
 
 // GetSocketOption prints a single socket option value for the socket defined
 // by pid/fd.
-func GetSocketOption(pid, fd int, option string) {
+func GetSocketOption(pid, fd int, option string, format string) {
 
 	socketFd, err := GetSocketFd(pid, fd)
 	if err != nil {
 		slog.Error("unable to get sockopt fd", slog.Any("error", err))
 	}
 
-	table := uitable.New()
-	table.MaxColWidth = 50
-
-	table.AddRow("SOCKET_OPTION", "VALUE", "DESCRIPTION")
+	var row OptionRow
 
 	so, ok := OptionsMap[option]
 	if !ok {
@@ -139,8 +173,8 @@ func GetSocketOption(pid, fd int, option string) {
 	if so.Unsigned {
 		display = fmt.Sprintf("%d", uint32(val))
 	}
-	table.AddRow(so.Name, display, so.Description)
+	row = OptionRow{so.Name, display, so.Description}
 
-	fmt.Println(table)
+	printOutput(row, []string{"SOCKET_OPTION", "VALUE", "DESCRIPTION"}, format)
 
 }
