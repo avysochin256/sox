@@ -85,3 +85,44 @@ func TestSetGetOption(t *testing.T) {
 		t.Fatalf("expected 1 got %d", val)
 	}
 }
+
+func TestSetOptionOutOfRange(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+
+	ready := make(chan struct{})
+	go func() {
+		close(ready)
+		c, err := l.Accept()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		select {}
+	}()
+
+	<-ready
+	c, err := net.Dial("tcp", l.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	fd, err := fdFromConn(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newfd, err := GetSocketFd(os.Getpid(), fd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unix.Close(newfd)
+
+	opt := OptionsMap["TCP_NODELAY"]
+	if err := opt.Set(newfd, 2); err == nil {
+		t.Fatal("expected range validation error")
+	}
+}

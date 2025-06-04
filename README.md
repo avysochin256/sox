@@ -53,7 +53,7 @@ TCP_QUICKACK            1               Enable quick ACK
 TCP_CONGESTION          1768060259      Get/Set congestion control algorithm
 TCP_REPAIR              0               TCP repair mode
 TCP_FASTOPEN            0               Enable TCP Fast Open
-TCP_TIMESTAMP           19100429        Enable TCP timestamps
+TCP_TIMESTAMP           19100429        Initial TCP timestamp value
 ```
 
 ### 3. Set a socket option
