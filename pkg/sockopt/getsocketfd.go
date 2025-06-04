@@ -7,10 +7,13 @@ import (
 )
 
 var (
-	// ErrUnableToGetPidFd is returned when pidfd.Open fails.
-	ErrUnableToGetPidFd = errors.New("unable to get fd of pid")
-	// ErrUnableToGetSocketFd is returned when the file descriptor cannot be obtained.
-	ErrUnableToGetSocketFd = errors.New("unable to get fd of pid")
+	// ErrUnableToGetPidFd is returned when pidfd.Open fails.  The operation
+	// requires either root privileges or the CAP_SYS_PTRACE capability.
+	ErrUnableToGetPidFd = errors.New("unable to get pid fd; run as root or with CAP_SYS_PTRACE")
+	// ErrUnableToGetSocketFd is returned when the file descriptor cannot be
+	// duplicated.  The operation requires either root privileges or the
+	// CAP_SYS_PTRACE capability.
+	ErrUnableToGetSocketFd = errors.New("unable to get fd of pid; run as root or with CAP_SYS_PTRACE")
 )
 
 // GetSocketFd returns a duplicate of file descriptor fd from the given process.
