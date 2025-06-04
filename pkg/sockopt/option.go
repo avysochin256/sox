@@ -1,3 +1,4 @@
+// Package sockopt contains low level wrappers around various TCP socket options.
 package sockopt
 
 import (
@@ -5,6 +6,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// SocketOption describes a single socket option.
+// MinVal and MaxVal are used for basic range validation when setting values.
 type SocketOption struct {
 	Name        string
 	Option      int
@@ -14,6 +17,7 @@ type SocketOption struct {
 	Description string
 }
 
+// Set changes the value of the socket option for the given socket file descriptor.
 func (so SocketOption) Set(socketFD int, value int) error {
 	err := unix.SetsockoptInt(socketFD, so.Level, so.Option, value)
 	if err != nil {
@@ -24,6 +28,7 @@ func (so SocketOption) Set(socketFD int, value int) error {
 
 }
 
+// Get returns the current value of the socket option for the given socket file descriptor.
 func (so SocketOption) Get(socketFD int) (int, error) {
 	val, err := unix.GetsockoptInt(socketFD, so.Level, so.Option)
 	if err != nil {
@@ -33,10 +38,9 @@ func (so SocketOption) Get(socketFD int) (int, error) {
 	return val, err
 }
 
-// OptionsList Provides stable order for output of list command
+// OptionsList provides a stable order for the list command output.
 var OptionsList = []string{
 	"SO_KEEPALIVE",
-	"TCP_KEEPALIVE",
 	"TCP_KEEPIDLE",
 	"TCP_KEEPINTVL",
 	"TCP_KEEPCNT",
@@ -54,10 +58,12 @@ var OptionsList = []string{
 	"TCP_REPAIR",
 	"TCP_REPAIR_QUEUE",
 	"TCP_QUEUE_SEQ",
+	"TCP_REPAIR_OPTIONS",
 	"TCP_FASTOPEN",
 	"TCP_TIMESTAMP",
 }
 
+// OptionsMap maps the option name to its description and numeric identifiers.
 var OptionsMap = map[string]SocketOption{
 	"SO_KEEPALIVE": {
 		Level:       unix.SOL_SOCKET,
@@ -90,6 +96,14 @@ var OptionsMap = map[string]SocketOption{
 		MinVal:      1,
 		MaxVal:      32767,
 		Description: "Number of keepalives before death",
+	},
+	"TCP_USER_TIMEOUT": {
+		Name:        "TCP_USER_TIMEOUT",
+		Option:      unix.TCP_USER_TIMEOUT,
+		Level:       unix.IPPROTO_TCP,
+		MinVal:      1,
+		MaxVal:      0xFFFFFFFF,
+		Description: "Time to wait for peer response",
 	},
 	"TCP_NODELAY": {
 		Name:        "TCP_NODELAY",

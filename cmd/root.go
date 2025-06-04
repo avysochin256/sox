@@ -1,11 +1,12 @@
 /*
 Copyright © 2024 Alexander Vysochin <avyssochin@gmail.com>
 */
+// Package cmd contains the CLI commands implemented using cobra.
 package cmd
 
 import (
-	"os"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 // rootCmd represents the base command when called without any subcommands
