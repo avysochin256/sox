@@ -1,6 +1,7 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 */
+// Sox is a simple CLI utility for inspecting and modifying TCP socket options.
 package main
 
 import (
@@ -8,6 +9,7 @@ import (
 )
 
 func main() {
+	// Execute runs the root command and subcommands provided by the cmd package.
 	cmd.Execute()
 }
 

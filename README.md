@@ -1,61 +1,35 @@
-# SOX - socket options extractor/setter.
----
-##### Sox enables you to retrieve or modify any TCP socket option for any process. This can be particularly useful for debugging purposes. Additionally, Sox can serve as a quick fix by allowing you to change socket options for any application without requiring a restart or causing downtime.
----
+# Sox
 
+Sox (Socket Options eXplorer) is a small command line tool that allows you to
+inspect and modify TCP socket options of any running process. It can be helpful
+for debugging or tuning network applications without restarting them.
 
-## Requirements:
-- Linux kernel 5.6+
-- `CAP_SYS_PTRACE` capability
+## Requirements
+- Linux kernel 5.6 or newer (for the pidfd API)
+- `CAP_SYS_PTRACE` capability to operate on foreign processes
 
-## Instalation:
-```
+## Installation
+```bash
 go install github.com/valexz/sox@latest
 ```
 
-## Usage example
+## Getting started
+1. Locate the target socket using `ss` or a similar tool to obtain the PID and
+   file descriptor.
 
+2. List all supported options for that socket:
+   ```bash
+   sudo sox list <pid> <fd>
+   ```
 
-### Get pid and fd of socket via ss:
-```
-❯ sudo ss -ntpa
-State       Recv-Q       Send-Q     Local Address:Port           Peer Address:Port        Process                                               
-LISTEN      0            128        0.0.0.0:22                   0.0.0.0:*                users:(("sshd",pid=1062,fd=3))                       
-```
+3. Get the value of a single option:
+   ```bash
+   sudo sox get <pid> <fd> TCP_NODELAY
+   ```
 
-### List all socket options for sshd process with PID=1062 and  tcp socket with FD=3
-```
-❯ sudo ./sox list 1062 3
-OPTION NAME             VALUE           DESCRIPTION                            
-SO_KEEPALIVE            1               Enable or disable TCP keepalive        
-TCP_KEEPIDLE            7200            Start keepalives after this period     
-TCP_KEEPINTVL           75              Interval between keepalives            
-TCP_KEEPCNT             9               Number of keepalives before death      
-TCP_NODELAY             0               Disable Nagle's algorithm              
-TCP_MAXSEG              536             Maximum segment size                   
-TCP_CORK                0               Control sending of partial frames      
-TCP_SYNCNT              6               Number of SYN retransmits              
-TCP_LINGER2             60              Lifetime of orphaned FIN-WAIT-2 state  
-TCP_DEFER_ACCEPT        0               Wake up listener only when data arrives
-TCP_WINDOW_CLAMP        0               Set maximum window size                
-TCP_INFO                10              Information about this socket          
-TCP_QUICKACK            1               Enable quick ACK                       
-TCP_CONGESTION          1768060259      Get/Set congestion control algorithm   
-TCP_REPAIR              0               TCP repair mode                        
-TCP_FASTOPEN            0               Enable TCP Fast Open                   
-TCP_TIMESTAMP           19100429        Enable TCP timestamps            
-```
+4. Change an option value:
+   ```bash
+   sudo sox set <pid> <fd> TCP_NODELAY 1
+   ```
 
-### Set socket option SO_KEEPALIVE to 1 for sshd process with PID=1062 and  tcp socket with FD=3
-```
-❯ sudo ./sox set 1062 3 SO_KEEPALIVE 1
-SOCKET_OPTION   VALUE   DESCRIPTION                    
-SO_KEEPALIVE    1       Enable or disable TCP keepalive
-```
-
-### Get value of socket option SO_KEEPALIVE for sshd process with PID=1062 and  tcp socket with FD=3
-```
-❯ sudo ./sox get 1062 3 SO_KEEPALIVE
-SOCKET_OPTION   VALUE   DESCRIPTION                    
-SO_KEEPALIVE    0       Enable or disable TCP keepalive
-```
+See the built in help (`sox --help`) for more commands and options.

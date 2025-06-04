@@ -1,3 +1,4 @@
+// Package sockets provides helpers for enumerating sockets owned by processes.
 package sockets
 
 import (
@@ -9,7 +10,7 @@ import (
 	"strings"
 )
 
-// SocketInfo holds information about a network socket.
+// SocketInfo holds information about a network socket discovered in /proc.
 type SocketInfo struct {
 	Protocol   string
 	LocalAddr  string
@@ -20,7 +21,7 @@ type SocketInfo struct {
 	FD         string
 }
 
-// Function to read and parse /proc/net/tcp or /proc/net/tcp6
+// parseProcNet reads and parses /proc/net/tcp or /proc/net/tcp6.
 func parseProcNet(protocol string) ([]SocketInfo, error) {
 	file, err := os.Open(fmt.Sprintf("/proc/net/%s", protocol))
 	if err != nil {
@@ -58,7 +59,7 @@ func parseProcNet(protocol string) ([]SocketInfo, error) {
 	return connections, scanner.Err()
 }
 
-// Function to parse IP address and port
+// parseAddress parses an address in the form IP:PORT from the proc files.
 func parseAddress(addr string) string {
 	parts := strings.Split(addr, ":")
 	if len(parts) != 2 {
@@ -71,7 +72,7 @@ func parseAddress(addr string) string {
 	return fmt.Sprintf("%s:%d", parsedIP, parsedPort)
 }
 
-// Function to parse hexadecimal IP address
+// parseHexIP converts a hex encoded IPv4 address to the dotted form.
 func parseHexIP(hexIP string) string {
 	bytes := make([]byte, len(hexIP)/2)
 	for i := 0; i < len(bytes); i++ {
@@ -81,7 +82,7 @@ func parseHexIP(hexIP string) string {
 	return fmt.Sprintf("%d.%d.%d.%d", bytes[0], bytes[1], bytes[2], bytes[3])
 }
 
-// Function to parse TCP state
+// parseState converts the numeric TCP state into a human readable string.
 func parseState(state string) string {
 	states := map[string]string{
 		"01": "ESTABLISHED",
@@ -99,7 +100,7 @@ func parseState(state string) string {
 	return states[state]
 }
 
-// Function to find the PID and FD from inode
+// findPidFdFromInode attempts to resolve a socket inode to pid and fd.
 func findPidFdFromInode(inode string) (string, string, error) {
 	procDirs, err := filepath.Glob("/proc/[0-9]*/fd/[0-9]*")
 	if err != nil {
@@ -125,6 +126,8 @@ func findPidFdFromInode(inode string) (string, string, error) {
 	return "", "", fmt.Errorf("inode %s not found", inode)
 }
 
+// getConnections prints all sockets with resolved pid/fd. It is primarily
+// used for debugging purposes.
 func getConnections() {
 	tcp4Connections, err := parseProcNet("tcp")
 	if err != nil {

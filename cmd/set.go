@@ -1,6 +1,7 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 */
+// Package cmd contains the CLI commands implemented using cobra.
 package cmd
 
 import (
@@ -18,18 +19,18 @@ var setCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		pid, err := strconv.Atoi(args[0])
 		if err != nil {
-			slog.Error("strconv.Atoi err:", err)
+			slog.Error("strconv.Atoi err", slog.Any("err", err))
 		}
 		fd, err := strconv.Atoi(args[1])
 		if err != nil {
-			slog.Error("strconv.Atoi err:", err)
+			slog.Error("strconv.Atoi err", slog.Any("err", err))
 		}
 
 		option := args[2]
 
 		val, err := strconv.Atoi(args[3])
 		if err != nil {
-			slog.Error("strconv.Atoi err:", err)
+			slog.Error("strconv.Atoi err", slog.Any("err", err))
 		}
 
 		sockopt.SetSocketOption(pid, fd, option, val)

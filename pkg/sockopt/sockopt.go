@@ -1,3 +1,5 @@
+// Package sockopt contains helper functions used by the CLI commands for
+// listing and updating socket options.
 package sockopt
 
 import (
@@ -9,6 +11,7 @@ import (
 	"os"
 )
 
+// GetSocketName returns the IPv4 address and port of a socket file descriptor.
 func GetSocketName(socketFd int) string {
 	sn, _ := unix.Getsockname(socketFd)
 	sai4 := sn.(*unix.SockaddrInet4)
@@ -17,6 +20,7 @@ func GetSocketName(socketFd int) string {
 	return socketName
 }
 
+// ListSocketOptions prints all supported options for the given pid/fd pair.
 func ListSocketOptions(pid, fd int) {
 
 	socketFd, err := GetSocketFd(pid, fd)
@@ -56,6 +60,7 @@ func ListSocketOptions(pid, fd int) {
 
 }
 
+// SetSocketOption changes the option value for the socket defined by pid/fd.
 func SetSocketOption(pid, fd int, option string, val int) {
 
 	socketFd, err := GetSocketFd(pid, fd)
@@ -94,7 +99,8 @@ func SetSocketOption(pid, fd int, option string, val int) {
 
 }
 
-
+// GetSocketOption prints a single socket option value for the socket defined
+// by pid/fd.
 func GetSocketOption(pid, fd int, option string) {
 
 	socketFd, err := GetSocketFd(pid, fd)
