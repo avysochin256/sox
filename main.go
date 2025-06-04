@@ -1,5 +1,5 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
+Copyright © 2024 Alexander Vysochin <avyssochin@gmail.com>
 */
 // Sox is a simple CLI utility for inspecting and modifying TCP socket options.
 package main
