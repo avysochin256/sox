@@ -26,7 +26,7 @@ var listCmd = &cobra.Command{
 			slog.Error("strconv.Atoi err", slog.Any("err", err))
 		}
 
-		sockopt.ListSocketOptions(pid, fd)
+		sockopt.ListSocketOptions(pid, fd, outputFormat)
 	},
 }
 

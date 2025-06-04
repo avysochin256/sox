@@ -84,7 +84,7 @@ func TestSetAndGetSocketOptionWrappers(t *testing.T) {
 	}
 
 	// ensure option can be set and read via wrappers
-	SetSocketOption(os.Getpid(), fd, "TCP_NODELAY", 1)
-	GetSocketOption(os.Getpid(), fd, "TCP_NODELAY")
-	ListSocketOptions(os.Getpid(), fd)
+	SetSocketOption(os.Getpid(), fd, "TCP_NODELAY", 1, "table")
+	GetSocketOption(os.Getpid(), fd, "TCP_NODELAY", "table")
+	ListSocketOptions(os.Getpid(), fd, "table")
 }
