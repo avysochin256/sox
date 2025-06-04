@@ -1,5 +1,5 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
+Copyright © 2024 Alexander Vysochin <avyssochin@gmail.com>
 */
 // Package cmd contains the CLI commands implemented using cobra.
 package cmd
