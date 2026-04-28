@@ -3,6 +3,7 @@ package sockopt
 
 import (
 	"fmt"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -46,6 +47,7 @@ func (so SocketOption) Get(socketFD int) (int, error) {
 // OptionsList provides a stable order for the list command output.
 var OptionsList = []string{
 	"SO_KEEPALIVE",
+	"SO_BINDTOIFINDEX",
 	"TCP_KEEPIDLE",
 	"TCP_KEEPINTVL",
 	"TCP_KEEPCNT",
@@ -77,6 +79,14 @@ var OptionsMap = map[string]SocketOption{
 		MinVal:      0,
 		MaxVal:      1,
 		Description: "Enable or disable TCP keepalive",
+	},
+	"SO_BINDTOIFINDEX": {
+		Name:        "SO_BINDTOIFINDEX",
+		Option:      unix.SO_BINDTOIFINDEX,
+		Level:       unix.SOL_SOCKET,
+		MinVal:      0,
+		MaxVal:      1<<31 - 1,
+		Description: "Bind socket to a network interface by index (ifindex). 0 removes binding. Preferred over SO_BINDTODEVICE for production. Requires CAP_NET_RAW.",
 	},
 	"TCP_KEEPIDLE": {
 		Name:        "TCP_KEEPIDLE",
