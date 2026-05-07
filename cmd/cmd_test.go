@@ -91,3 +91,15 @@ func TestCommandsInvalidArgs(t *testing.T) {
 		t.Fatal("expected ExactArgs(2) to reject 1 arg")
 	}
 }
+
+func TestExplainCommand(t *testing.T) {
+	if err := explainCmd.RunE(explainCmd, []string{"TCP_NODELAY"}); err != nil {
+		t.Fatalf("expected explain on known option to succeed: %v", err)
+	}
+	if err := explainCmd.RunE(explainCmd, []string{"BOGUS"}); err == nil {
+		t.Fatal("expected explain on unknown option to error")
+	}
+	if err := explainCmd.Args(explainCmd, []string{}); err == nil {
+		t.Fatal("expected ExactArgs(1) to reject 0 args")
+	}
+}
