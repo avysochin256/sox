@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"github.com/valexz/sox/pkg/sockopt"
+	"github.com/avysochin256/sox/pkg/sockopt"
 )
 
 // getCmd represents the get command

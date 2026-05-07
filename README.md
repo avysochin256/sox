@@ -10,7 +10,7 @@ for debugging or tuning network applications without restarting them.
 
 ## Installation
 ```bash
-go install github.com/valexz/sox@latest
+go install github.com/avysochin256/sox@latest
 ```
 
 ## Quickstart

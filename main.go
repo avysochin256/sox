@@ -5,7 +5,7 @@ Copyright © 2024 Alexander Vysochin <avyssochin@gmail.com>
 package main
 
 import (
-	"github.com/valexz/sox/cmd"
+	"github.com/avysochin256/sox/cmd"
 )
 
 func main() {

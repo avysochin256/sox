@@ -6,7 +6,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/valexz/sox/pkg/sockopt"
+	"github.com/avysochin256/sox/pkg/sockopt"
 )
 
 // explainCmd represents the explain command

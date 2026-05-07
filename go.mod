@@ -1,4 +1,4 @@
-module github.com/valexz/sox
+module github.com/avysochin256/sox
 
 go 1.22.0
 
