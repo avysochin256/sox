@@ -5,11 +5,12 @@ package sockopt
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gosuri/uitable"
-	"golang.org/x/sys/unix"
 	"log/slog"
 	"os"
+	"strings"
 
+	"github.com/gosuri/uitable"
+	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,6 +18,7 @@ import (
 type OptionRow struct {
 	Name        string `json:"name" yaml:"name"`
 	Value       any    `json:"value" yaml:"value"`
+	Hint        string `json:"hint,omitempty" yaml:"hint,omitempty"`
 	Description string `json:"description" yaml:"description"`
 }
 
@@ -35,7 +37,8 @@ func printOutput(data any, headers []string, format string) {
 		}
 	default:
 		table := uitable.New()
-		table.MaxColWidth = 50
+		table.MaxColWidth = 80
+		table.Wrap = true
 		hi := make([]interface{}, len(headers))
 		for i, h := range headers {
 			hi[i] = h
@@ -43,10 +46,10 @@ func printOutput(data any, headers []string, format string) {
 		table.AddRow(hi...)
 		switch v := data.(type) {
 		case OptionRow:
-			table.AddRow(v.Name, v.Value, v.Description)
+			table.AddRow(v.Name, v.Value, v.Hint, v.Description)
 		case []OptionRow:
 			for _, r := range v {
-				table.AddRow(r.Name, r.Value, r.Description)
+				table.AddRow(r.Name, r.Value, r.Hint, r.Description)
 			}
 		}
 		fmt.Println(table)
@@ -81,7 +84,7 @@ func ListSocketOptions(pid, fd int, format string) {
 			// enabled, and SO_BINDTOIFINDEX is set-only on kernels < 5.7.
 			// The "n/a" cell is the right signal; running `sox get` on the
 			// specific option will surface the underlying error.
-			rows = append(rows, OptionRow{so.Name, "n/a", so.Description})
+			rows = append(rows, OptionRow{Name: so.Name, Value: "n/a", Description: so.Description})
 			continue
 		}
 
@@ -89,10 +92,10 @@ func ListSocketOptions(pid, fd int, format string) {
 		if so.Unsigned {
 			display = fmt.Sprintf("%d", uint32(val))
 		}
-		rows = append(rows, OptionRow{so.Name, display, so.Description})
+		rows = append(rows, OptionRow{Name: so.Name, Value: display, Hint: so.Hint(val), Description: so.Description})
 	}
 
-	printOutput(rows, []string{"OPTION NAME", "VALUE", "DESCRIPTION"}, format)
+	printOutput(rows, []string{"OPTION NAME", "VALUE", "HINT", "DESCRIPTION"}, format)
 }
 
 // SetSocketOption changes the option value for the socket defined by pid/fd.
@@ -129,10 +132,80 @@ func SetSocketOption(pid, fd int, option string, val int, format string) {
 	if so.Unsigned {
 		display = fmt.Sprintf("%d", uint32(val))
 	}
-	row = OptionRow{so.Name, display, so.Description}
+	row = OptionRow{Name: so.Name, Value: display, Hint: so.Hint(val), Description: so.Description}
 
-	printOutput(row, []string{"SOCKET_OPTION", "VALUE", "DESCRIPTION"}, format)
+	printOutput(row, []string{"SOCKET_OPTION", "VALUE", "HINT", "DESCRIPTION"}, format)
 
+}
+
+// ExplainData carries all metadata about a single socket option for the
+// `sox explain` command.
+type ExplainData struct {
+	Name        string `json:"name" yaml:"name"`
+	Level       string `json:"level" yaml:"level"`
+	Min         int    `json:"min" yaml:"min"`
+	Max         int    `json:"max" yaml:"max"`
+	ReadOnly    bool   `json:"read_only" yaml:"read_only"`
+	Description string `json:"description" yaml:"description"`
+	Details     string `json:"details" yaml:"details"`
+}
+
+// ExplainSocketOption prints the full description of a socket option, in the
+// requested output format.
+func ExplainSocketOption(option, format string) error {
+	so, ok := OptionsMap[option]
+	if !ok {
+		return fmt.Errorf("unsupported socket option %q (run `sox list <pid> <fd>` for the supported set)", option)
+	}
+
+	data := ExplainData{
+		Name:        so.Name,
+		Level:       so.LevelName(),
+		Min:         so.MinVal,
+		Max:         so.MaxVal,
+		ReadOnly:    so.MinVal == so.MaxVal,
+		Description: so.Description,
+		Details:     so.Details,
+	}
+
+	switch format {
+	case "json":
+		b, err := json.MarshalIndent(data, "", "  ")
+		if err == nil {
+			fmt.Println(string(b))
+		}
+	case "yaml":
+		b, err := yaml.Marshal(data)
+		if err == nil {
+			fmt.Print(string(b))
+		}
+	default:
+		rangeStr := fmt.Sprintf("[%d, %d]", so.MinVal, so.MaxVal)
+		if data.ReadOnly {
+			rangeStr = "(read-only / no range validation)"
+		}
+		fmt.Printf("%s\n", so.Name)
+		fmt.Printf("%s\n\n", strings.Repeat("=", len(so.Name)))
+		fmt.Printf("Level: %s\n", data.Level)
+		fmt.Printf("Range: %s\n\n", rangeStr)
+		fmt.Printf("Summary:\n  %s\n\n", so.Description)
+		if so.Details != "" {
+			fmt.Printf("Details:\n%s\n", indent(so.Details, "  "))
+		}
+	}
+	return nil
+}
+
+// indent prefixes every line of s with the given prefix.
+func indent(s, prefix string) string {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		if l == "" {
+			continue
+		}
+		lines[i] = prefix + l
+	}
+	return strings.Join(lines, "\n")
 }
 
 // GetSocketOption prints a single socket option value for the socket defined
@@ -164,8 +237,8 @@ func GetSocketOption(pid, fd int, option string, format string) {
 	if so.Unsigned {
 		display = fmt.Sprintf("%d", uint32(val))
 	}
-	row = OptionRow{so.Name, display, so.Description}
+	row = OptionRow{Name: so.Name, Value: display, Hint: so.Hint(val), Description: so.Description}
 
-	printOutput(row, []string{"SOCKET_OPTION", "VALUE", "DESCRIPTION"}, format)
+	printOutput(row, []string{"SOCKET_OPTION", "VALUE", "HINT", "DESCRIPTION"}, format)
 
 }
