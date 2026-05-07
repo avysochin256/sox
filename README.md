@@ -71,3 +71,10 @@ SO_KEEPALIVE    0       Enable or disable TCP keepalive
 ```
 
 See the built-in help (`sox --help`) for more commands and options.
+
+## Known problems
+
+- On Linux kernels older than 5.7, `getsockopt(SO_BINDTOIFINDEX)` returns
+  `ENOPROTOOPT` even though `setsockopt` works (the read side was added later
+  than the write side). `sox list` and `sox get` will show `n/a` for this
+  option on such kernels; `sox set SO_BINDTOIFINDEX <ifindex>` still works.

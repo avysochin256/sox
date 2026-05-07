@@ -80,9 +80,8 @@ func ListSocketOptions(pid, fd int, format string) {
 		val, err := so.Get(socketFd)
 
 		if err != nil {
-			err = fmt.Errorf("unable to get sockopt option %s : %w", so.Name, err)
-			errors.Join(joinedListErr, err)
-
+			joinedListErr = errors.Join(joinedListErr, fmt.Errorf("unable to get sockopt option %s : %w", so.Name, err))
+			rows = append(rows, OptionRow{so.Name, "n/a", so.Description})
 			continue
 		}
 
