@@ -128,7 +128,7 @@ Setting SO_KEEPALIVE alone is not enough; the timers default to 2 hours of idle 
 		MinVal:      0,
 		MaxVal:      1<<31 - 1,
 		Description: "Bind socket to a network interface by ifindex; 0 unbinds. Needs CAP_NET_RAW.",
-		Details: `Restricts a socket to a specific network interface, identified by its kernel ifindex. Look up an interface's ifindex with "ip -br link" or "ip address show" (the integer next to the interface name).
+		Details: `Restricts a socket to a specific network interface, identified by its kernel ifindex. Look up an interface's ifindex with "ip -o link" (the leading integer on each line) or "cat /sys/class/net/<iface>/ifindex".
 
 Compared to SO_BINDTODEVICE, this variant takes a numeric index rather than a device name, avoiding a name-to-index lookup on every send and surviving renames.
 
