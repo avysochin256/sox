@@ -4,7 +4,6 @@ package sockopt
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gosuri/uitable"
 	"golang.org/x/sys/unix"
@@ -71,16 +70,17 @@ func ListSocketOptions(pid, fd int, format string) {
 		slog.Error("unable to get sockopt fd", slog.Any("error", err))
 	}
 
-	var rows []OptionRow
-
-	var joinedListErr error
+	rows := make([]OptionRow, 0, len(OptionsList))
 	for _, soname := range OptionsList {
 		so := OptionsMap[soname]
 
 		val, err := so.Get(socketFd)
-
 		if err != nil {
-			joinedListErr = errors.Join(joinedListErr, fmt.Errorf("unable to get sockopt option %s : %w", so.Name, err))
+			// Some options (e.g. TCP_REPAIR_QUEUE, TCP_QUEUE_SEQ,
+			// TCP_REPAIR_OPTIONS) are only readable while TCP_REPAIR is
+			// enabled, and SO_BINDTOIFINDEX is set-only on kernels < 5.7.
+			// The "n/a" cell is the right signal; running `sox get` on the
+			// specific option will surface the underlying error.
 			rows = append(rows, OptionRow{so.Name, "n/a", so.Description})
 			continue
 		}
@@ -93,14 +93,6 @@ func ListSocketOptions(pid, fd int, format string) {
 	}
 
 	printOutput(rows, []string{"OPTION NAME", "VALUE", "DESCRIPTION"}, format)
-
-	if uw, ok := joinedListErr.(interface{ Unwrap() []error }); ok {
-		errs := uw.Unwrap()
-		for _, err := range errs {
-			slog.Error("unable to get value of sockopt option", slog.Any("error", err))
-		}
-	}
-
 }
 
 // SetSocketOption changes the option value for the socket defined by pid/fd.
