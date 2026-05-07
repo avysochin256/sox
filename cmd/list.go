@@ -5,28 +5,31 @@ Copyright © 2024 Alexander Vysochin <avyssochin@gmail.com>
 package cmd
 
 import (
-	"github.com/valexz/sox/pkg/sockopt"
-	"log/slog"
+	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
+	"github.com/valexz/sox/pkg/sockopt"
 )
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all socket options, supported by sox. Example: sox list <process pid> <socket fd>",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:          "list <pid> <fd>",
+	Short:        "List all socket options supported by sox",
+	Args:         cobra.ExactArgs(2),
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		pid, err := strconv.Atoi(args[0])
 		if err != nil {
-			slog.Error("strconv.Atoi err", slog.Any("err", err))
+			return fmt.Errorf("invalid pid %q: must be an integer", args[0])
 		}
 		fd, err := strconv.Atoi(args[1])
 		if err != nil {
-			slog.Error("strconv.Atoi err", slog.Any("err", err))
+			return fmt.Errorf("invalid fd %q: must be an integer", args[1])
 		}
 
 		sockopt.ListSocketOptions(pid, fd, outputFormat)
+		return nil
 	},
 }
 

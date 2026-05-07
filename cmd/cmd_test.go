@@ -57,9 +57,15 @@ func TestCommands(t *testing.T) {
 	pidStr := strconv.Itoa(os.Getpid())
 	fdStr := strconv.Itoa(fd)
 
-	getCmd.Run(getCmd, []string{pidStr, fdStr, "TCP_NODELAY"})
-	setCmd.Run(setCmd, []string{pidStr, fdStr, "TCP_NODELAY", "1"})
-	listCmd.Run(listCmd, []string{pidStr, fdStr})
+	if err := getCmd.RunE(getCmd, []string{pidStr, fdStr, "TCP_NODELAY"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := setCmd.RunE(setCmd, []string{pidStr, fdStr, "TCP_NODELAY", "1"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := listCmd.RunE(listCmd, []string{pidStr, fdStr}); err != nil {
+		t.Fatal(err)
+	}
 
 	// root command execution
 	rootCmd.SetArgs([]string{"get", pidStr, fdStr, "TCP_NODELAY"})
@@ -69,6 +75,19 @@ func TestCommands(t *testing.T) {
 }
 
 func TestCommandsInvalidArgs(t *testing.T) {
-	getCmd.Run(getCmd, []string{"bad", "fd", "TCP_NODELAY"})
-	listCmd.Run(listCmd, []string{"bad", "fd"})
+	if err := getCmd.RunE(getCmd, []string{"bad", "fd", "TCP_NODELAY"}); err == nil {
+		t.Fatal("expected error for non-numeric pid")
+	}
+	if err := listCmd.RunE(listCmd, []string{"bad", "fd"}); err == nil {
+		t.Fatal("expected error for non-numeric pid")
+	}
+	if err := getCmd.Args(getCmd, []string{"1"}); err == nil {
+		t.Fatal("expected ExactArgs(3) to reject 1 arg")
+	}
+	if err := setCmd.Args(setCmd, []string{"1", "2", "TCP_NODELAY"}); err == nil {
+		t.Fatal("expected ExactArgs(4) to reject 3 args")
+	}
+	if err := listCmd.Args(listCmd, []string{"1"}); err == nil {
+		t.Fatal("expected ExactArgs(2) to reject 1 arg")
+	}
 }
