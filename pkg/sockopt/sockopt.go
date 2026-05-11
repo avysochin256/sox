@@ -27,14 +27,18 @@ func printOutput(data any, headers []string, format string) {
 	switch format {
 	case "json":
 		b, err := json.MarshalIndent(data, "", "  ")
-		if err == nil {
-			fmt.Println(string(b))
+		if err != nil {
+			slog.Error("unable to marshal output to JSON", slog.Any("error", err))
+			return
 		}
+		fmt.Println(string(b))
 	case "yaml":
 		b, err := yaml.Marshal(data)
-		if err == nil {
-			fmt.Print(string(b))
+		if err != nil {
+			slog.Error("unable to marshal output to YAML", slog.Any("error", err))
+			return
 		}
+		fmt.Print(string(b))
 	default:
 		table := uitable.New()
 		table.MaxColWidth = 80
@@ -171,14 +175,16 @@ func ExplainSocketOption(option, format string) error {
 	switch format {
 	case "json":
 		b, err := json.MarshalIndent(data, "", "  ")
-		if err == nil {
-			fmt.Println(string(b))
+		if err != nil {
+			return fmt.Errorf("unable to marshal explain output to JSON: %w", err)
 		}
+		fmt.Println(string(b))
 	case "yaml":
 		b, err := yaml.Marshal(data)
-		if err == nil {
-			fmt.Print(string(b))
+		if err != nil {
+			return fmt.Errorf("unable to marshal explain output to YAML: %w", err)
 		}
+		fmt.Print(string(b))
 	default:
 		rangeStr := fmt.Sprintf("[%d, %d]", so.MinVal, so.MaxVal)
 		if data.ReadOnly {
