@@ -68,7 +68,10 @@ func TestGetSocketName(t *testing.T) {
 	}
 	defer syscall.Close(dup)
 
-	name := GetSocketName(dup)
+	name, err := GetSocketName(dup)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !strings.Contains(name, ":") {
 		t.Fatalf("unexpected socket name %s", name)
 	}

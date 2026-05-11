@@ -3,6 +3,8 @@ package sockopt
 
 import (
 	"errors"
+	"syscall"
+
 	"github.com/oraoto/go-pidfd"
 )
 
@@ -17,12 +19,15 @@ var (
 )
 
 // GetSocketFd returns a duplicate of file descriptor fd from the given process.
-// It utilises the pidfd mechanism and thus requires Linux 5.6+.
+// It utilises the pidfd mechanism and thus requires Linux 5.6+. The returned
+// fd is owned by the caller and must be closed (e.g. with syscall.Close) when
+// no longer needed.
 func GetSocketFd(pid, fd int) (int, error) {
 	pidFD, err := pidfd.Open(pid, 0)
 	if err != nil {
 		return 0, ErrUnableToGetPidFd
 	}
+	defer syscall.Close(int(pidFD))
 
 	socketFD, err := pidFD.GetFd(fd, 0)
 	if err != nil {

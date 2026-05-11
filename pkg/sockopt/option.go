@@ -3,6 +3,7 @@ package sockopt
 
 import (
 	"fmt"
+	"math"
 	"net"
 
 	"golang.org/x/sys/unix"
@@ -172,11 +173,14 @@ Total dead-detection time is roughly TCP_KEEPIDLE + TCP_KEEPCNT * TCP_KEEPINTVL.
 		Details: `Number of keepalive probes that may go unanswered before the kernel concludes the peer is dead and closes the socket with ETIMEDOUT. System-wide default is 9 (/proc/sys/net/ipv4/tcp_keepalive_probes).`,
 	},
 	"TCP_USER_TIMEOUT": {
-		Name:        "TCP_USER_TIMEOUT",
-		Option:      unix.TCP_USER_TIMEOUT,
-		Level:       unix.IPPROTO_TCP,
-		MinVal:      1,
-		MaxVal:      0xFFFFFFFF,
+		Name:   "TCP_USER_TIMEOUT",
+		Option: unix.TCP_USER_TIMEOUT,
+		Level:  unix.IPPROTO_TCP,
+		MinVal: 1,
+		// The kernel stores this as u32, but SetsockoptInt takes int; cap
+		// at MaxInt32 so the constant fits an int on 32-bit builds and
+		// matches the value range that can actually round-trip the syscall.
+		MaxVal:      math.MaxInt32,
 		Description: "Max ms data may stay unacknowledged before TCP closes the connection.",
 		Details: `Independent of the keepalive timers, TCP_USER_TIMEOUT places an upper bound on how long data sitting in the retransmission queue may go unacknowledged. Once the timeout fires the connection is aborted with ETIMEDOUT, regardless of the standard exponential backoff.
 

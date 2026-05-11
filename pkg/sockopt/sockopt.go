@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
+	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/gosuri/uitable"
 	"golang.org/x/sys/unix"
@@ -59,13 +62,26 @@ func printOutput(data any, headers []string, format string) {
 	}
 }
 
-// GetSocketName returns the IPv4 address and port of a socket file descriptor.
-func GetSocketName(socketFd int) string {
-	sn, _ := unix.Getsockname(socketFd)
-	sai4 := sn.(*unix.SockaddrInet4)
-	socketName := fmt.Sprintf("%d.%d.%d.%d:%d", sai4.Addr[0], sai4.Addr[1], sai4.Addr[2], sai4.Addr[3], sai4.Port)
-
-	return socketName
+// GetSocketName returns the address:port of the socket bound to socketFd.
+// Supports both IPv4 and IPv6 sockets.
+func GetSocketName(socketFd int) (string, error) {
+	sn, err := unix.Getsockname(socketFd)
+	if err != nil {
+		return "", fmt.Errorf("getsockname: %w", err)
+	}
+	var (
+		addr []byte
+		port int
+	)
+	switch sa := sn.(type) {
+	case *unix.SockaddrInet4:
+		addr, port = sa.Addr[:], sa.Port
+	case *unix.SockaddrInet6:
+		addr, port = sa.Addr[:], sa.Port
+	default:
+		return "", fmt.Errorf("unsupported sockaddr type %T", sn)
+	}
+	return net.JoinHostPort(net.IP(addr).String(), strconv.Itoa(port)), nil
 }
 
 // ListSocketOptions prints all supported options for the given pid/fd pair.
@@ -74,6 +90,7 @@ func ListSocketOptions(pid, fd int, format string) error {
 	if err != nil {
 		return fmt.Errorf("unable to get sockopt fd: %w", err)
 	}
+	defer syscall.Close(socketFd)
 
 	rows := make([]OptionRow, 0, len(OptionsList))
 	for _, soname := range OptionsList {
@@ -107,6 +124,7 @@ func SetSocketOption(pid, fd int, option string, val int, format string) error {
 	if err != nil {
 		return fmt.Errorf("unable to get sockopt fd: %w", err)
 	}
+	defer syscall.Close(socketFd)
 
 	so, ok := OptionsMap[option]
 	if !ok {
@@ -223,6 +241,7 @@ func GetSocketOption(pid, fd int, option string, format string) error {
 	if err != nil {
 		return fmt.Errorf("unable to get sockopt fd: %w", err)
 	}
+	defer syscall.Close(socketFd)
 
 	so, ok := OptionsMap[option]
 	if !ok {
