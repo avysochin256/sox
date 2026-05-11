@@ -38,8 +38,7 @@ var setCmd = &cobra.Command{
 			return fmt.Errorf("invalid value %q: must be an integer", args[3])
 		}
 
-		sockopt.SetSocketOption(pid, fd, option, val, outputFormat)
-		return nil
+		return sockopt.SetSocketOption(pid, fd, option, val, outputFormat)
 	},
 }
 

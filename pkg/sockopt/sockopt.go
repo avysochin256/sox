@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 
 	"github.com/gosuri/uitable"
@@ -70,11 +69,10 @@ func GetSocketName(socketFd int) string {
 }
 
 // ListSocketOptions prints all supported options for the given pid/fd pair.
-func ListSocketOptions(pid, fd int, format string) {
-
+func ListSocketOptions(pid, fd int, format string) error {
 	socketFd, err := GetSocketFd(pid, fd)
 	if err != nil {
-		slog.Error("unable to get sockopt fd", slog.Any("error", err))
+		return fmt.Errorf("unable to get sockopt fd: %w", err)
 	}
 
 	rows := make([]OptionRow, 0, len(OptionsList))
@@ -100,46 +98,50 @@ func ListSocketOptions(pid, fd int, format string) {
 	}
 
 	printOutput(rows, []string{"OPTION NAME", "VALUE", "HINT", "DESCRIPTION"}, format)
+	return nil
 }
 
 // SetSocketOption changes the option value for the socket defined by pid/fd.
-func SetSocketOption(pid, fd int, option string, val int, format string) {
-
+func SetSocketOption(pid, fd int, option string, val int, format string) error {
 	socketFd, err := GetSocketFd(pid, fd)
 	if err != nil {
-		slog.Error("unable to get sockopt fd", slog.Any("error", err))
+		return fmt.Errorf("unable to get sockopt fd: %w", err)
 	}
-
-	var row OptionRow
 
 	so, ok := OptionsMap[option]
 	if !ok {
-		err = fmt.Errorf("unsupported socket option %s : %w", option, err)
-		os.Exit(1)
-
+		return fmt.Errorf("unsupported socket option %q", option)
 	}
 
-	err = so.Set(socketFd, val)
-	if err != nil {
-		err = fmt.Errorf("unable to set sockopt option %s : %w", so.Name, err)
-		os.Exit(1)
+	if err := so.Set(socketFd, val); err != nil {
+		return fmt.Errorf("unable to set sockopt option %s: %w", so.Name, err)
 	}
 
-	val, err = so.Get(socketFd) // TODO: Remove shadowing
-
-	if err != nil {
-		err = fmt.Errorf("unable to get socket option %s  after value was set: %w", so.Name, err)
-
+	// Set succeeded; render the current value. If the post-set read-back
+	// fails (e.g. write-only options like TCP_REPAIR_OPTIONS), report
+	// "n/a" rather than fabricating a 0 from the unix.GetsockoptInt
+	// `(0, err)` convention.
+	var (
+		display any
+		hint    string
+	)
+	got, getErr := so.Get(socketFd)
+	if getErr != nil {
+		slog.Warn("set succeeded but post-set read-back failed",
+			slog.String("option", so.Name),
+			slog.Any("error", getErr))
+		display = "n/a"
+	} else {
+		display = got
+		if so.Unsigned {
+			display = fmt.Sprintf("%d", uint32(got))
+		}
+		hint = so.Hint(got)
 	}
 
-	display := any(val)
-	if so.Unsigned {
-		display = fmt.Sprintf("%d", uint32(val))
-	}
-	row = OptionRow{Name: so.Name, Value: display, Hint: so.Hint(val), Description: so.Description}
-
+	row := OptionRow{Name: so.Name, Value: display, Hint: hint, Description: so.Description}
 	printOutput(row, []string{"SOCKET_OPTION", "VALUE", "HINT", "DESCRIPTION"}, format)
-
+	return nil
 }
 
 // ExplainData carries all metadata about a single socket option for the
@@ -216,35 +218,28 @@ func indent(s, prefix string) string {
 
 // GetSocketOption prints a single socket option value for the socket defined
 // by pid/fd.
-func GetSocketOption(pid, fd int, option string, format string) {
-
+func GetSocketOption(pid, fd int, option string, format string) error {
 	socketFd, err := GetSocketFd(pid, fd)
 	if err != nil {
-		slog.Error("unable to get sockopt fd", slog.Any("error", err))
+		return fmt.Errorf("unable to get sockopt fd: %w", err)
 	}
-
-	var row OptionRow
 
 	so, ok := OptionsMap[option]
 	if !ok {
-		err = fmt.Errorf("unsupported socket option %s : %w", option, err)
-		os.Exit(1)
-
+		return fmt.Errorf("unsupported socket option %q", option)
 	}
 
 	val, err := so.Get(socketFd)
-
 	if err != nil {
-		err = fmt.Errorf("unable to get socket option %s  after value was set: %w", so.Name, err)
-
+		return fmt.Errorf("unable to get sockopt option %s: %w", so.Name, err)
 	}
 
 	display := any(val)
 	if so.Unsigned {
 		display = fmt.Sprintf("%d", uint32(val))
 	}
-	row = OptionRow{Name: so.Name, Value: display, Hint: so.Hint(val), Description: so.Description}
+	row := OptionRow{Name: so.Name, Value: display, Hint: so.Hint(val), Description: so.Description}
 
 	printOutput(row, []string{"SOCKET_OPTION", "VALUE", "HINT", "DESCRIPTION"}, format)
-
+	return nil
 }

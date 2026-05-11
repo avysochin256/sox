@@ -33,8 +33,7 @@ var getCmd = &cobra.Command{
 			return fmt.Errorf("unsupported socket option %q (run `sox list <pid> <fd>` for the supported set)", option)
 		}
 
-		sockopt.GetSocketOption(pid, fd, option, outputFormat)
-		return nil
+		return sockopt.GetSocketOption(pid, fd, option, outputFormat)
 	},
 }
 
